@@ -61,4 +61,82 @@ def random_board(pieces):
     return board
 
 
-print(random_board(['K', 'k', 'N', 'b']))
+
+def pieces_score(board):
+    description = board.fen()
+    score = 0
+    for i in description:
+        if i == ' ':
+            break
+
+        elif i == 'Q':
+            score += 9
+        elif i == 'R':
+            score += 5
+        elif i == 'N' or i == 'B':
+            score += 3
+        elif i == 'P':
+            score += 1
+        
+        elif i == 'q':
+            score -= 9
+        elif i == 'r':
+            score -= 5
+        elif i == 'n' or i == 'b':
+            score -= 3
+        elif i == 'p':
+            score += 1
+    
+    return score
+
+def nb_wmoves(board):
+    color = board.turn
+    board.turn = chess.WHITE
+    score = board.legal_moves.count()
+    board.turn = color
+    return score
+
+def nb_bmoves(board):
+    color = board.turn
+    board.turn = chess.BLACK
+    score = board.legal_moves.count()
+    board.turn = color
+    return score
+
+def all_pieces(board, color):
+    '''return a set of squares occupied by the pieces of the given color'''
+    return board.pieces(chess.PAWN, color).union(board.pieces(chess.KING, color).union(board.pieces(chess.QUEEN, color).union(board.pieces(chess.ROOK, color).union(board.pieces(chess.BISHOP, color).union(board.pieces(chess.KNIGHT, color))))))
+
+
+def nb_wattack(board):
+    count = 0
+    for square in all_pieces(board, chess.BLACK):
+        count += len(board.attackers(chess.WHITE, square))
+    return count
+
+def nb_battack(board):
+    count = 0
+    for square in all_pieces(board, chess.WHITE):
+        count += len(board.attackers(chess.BLACK, square))
+    return count
+
+def nb_wpin(board):
+    count = 0
+    for square in all_pieces(board, chess.BLACK):
+        count += int(board.is_pinned(chess.BLACK, square))
+    return count
+
+def nb_bpin(board):
+    count = 0
+    for square in all_pieces(board, chess.WHITE):
+        count += int(board.is_pinned(chess.WHITE, square))
+    return count
+
+
+
+def features(board):
+    '''features are independant of the turn to play because the result to predict is'''
+    return [pieces_score(board), int(board.is_check()), nb_wmoves(board), nb_bmoves(board), nb_wattack(board), nb_battack(board), nb_wpin(board), nb_bpin(board)]
+
+board = random_board(['K', 'k', 'N', 'Q', 'q', 'r', 'R'])
+print(features(board))
