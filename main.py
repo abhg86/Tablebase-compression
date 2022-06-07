@@ -1,44 +1,10 @@
 import chess
+import chess.syzygy
+import chess.gaviota
 import sklearn 
 import random as rd
 
-###
-### Implémentation à la main avant de se rendre compte que c'était faisable par des commandes
-###
-
-# def add_to_line(p, i, line):
-#     first = line[0]
-
-#     if len(line) == 1:
-#         n = int(first)
-#         pre = i -1
-#         post = n - i
-
-#         if pre != 0 : strpre = str(pre)
-#         else : strpre = ''
-#         if post != 0 : strpost = str(post)
-#         else : strpost = ''
-
-#         return strpre+p+strpost
-
-#     if first in ['k', 'q', 'r', 'b', 'n', 'p', 'K', 'Q', 'R', 'B', 'N', 'P']:
-#         return first + add_to_line(p, i-1, line[1:])
-#     else :
-#         n = int(first)
-#         if i<=n :
-#             return add_to_line(p, i, [first]) + line[1:]
-#         else :
-#             return first + add_to_line(p, i -n, line[1:])
-
-
-# def create_board(pieces, places, color):
-#     board_lines = ["8","8","8","8","8","8","8","8"]
-#     for i in range(len(pieces)):
-#         p = pieces[i]
-#         x,y = places[i]%8, places[i]//8
-#         board_lines[y] = add_to_line(p, x+1, board_lines[y])
-#     board = board_lines[0]+'/'+board_lines[1]+'/'+board_lines[2]+'/'+board_lines[3]+'/'+board_lines[4]+'/'+board_lines[5]+'/'+board_lines[6]+'/'+board_lines[7]+' ' + color + ' - - 0 1'
-#     return chess.Board(board)
+from sklearn.linear_model import LogisticRegression
 
 def create_board(pieces,places, color):
     board = chess.Board()
@@ -57,35 +23,40 @@ def random_board(pieces):
     color = rd.choice(['w', 'b'])
     board = create_board(pieces, places, color)
     if not board.is_valid() : 
-        random_board(pieces)
-    return board
+        return random_board(pieces)
+    else:
+        return board
 
 
 
 def pieces_score(board):
     description = board.fen()
-    score = 0
+    score = [0,0,0,0,0,0,0,0,0,0]
     for i in description:
         if i == ' ':
             break
 
         elif i == 'Q':
-            score += 9
+            score[0] += 1
         elif i == 'R':
-            score += 5
-        elif i == 'N' or i == 'B':
-            score += 3
+            score[1] += 1
+        elif i == 'N' :
+            score[2] += 1
+        elif i == 'B':
+            score[3] += 1
         elif i == 'P':
-            score += 1
+            score[4] += 1
         
         elif i == 'q':
-            score -= 9
+            score[5] += 1
         elif i == 'r':
-            score -= 5
-        elif i == 'n' or i == 'b':
-            score -= 3
+            score[6] += 1
+        elif i == 'n':
+            score[7] += 1
+        elif i == 'b':
+            score[8] += 1
         elif i == 'p':
-            score += 1
+            score[9] += 1
     
     return score
 
@@ -136,7 +107,42 @@ def nb_bpin(board):
 
 def features(board):
     '''features are independant of the turn to play because the result to predict is'''
-    return [pieces_score(board), int(board.is_check()), nb_wmoves(board), nb_bmoves(board), nb_wattack(board), nb_battack(board), nb_wpin(board), nb_bpin(board)]
+    pieces = pieces_score(board)
+    return [board.turn, pieces[0], pieces[1], pieces[2], pieces[3], pieces[4], pieces[5], pieces[6], pieces[7], pieces[8], pieces[9], int(board.is_check()), nb_wmoves(board), nb_bmoves(board), nb_wattack(board), nb_battack(board), nb_wpin(board), nb_bpin(board)]
 
-board = random_board(['K', 'k', 'N', 'Q', 'q', 'r', 'R'])
-print(features(board))
+def train_set(nb, pieces):
+    Xtr, Ytr = [], []
+    boards = []
+    with chess.syzygy.open_tablebase("data/syzygy/wdl") as tablebase :
+        for i in range(nb):
+            board = random_board(pieces)
+            boards += [board]
+
+            feature = features(board)
+            result = tablebase.probe_wdl(board)
+            Xtr += [feature]
+            Ytr += [result]
+    return Xtr, Ytr, boards
+
+def test_set(nb, pieces, trainset):
+    Xte, Yte = [], []
+    with chess.syzygy.open_tablebase("data/syzygy/wdl") as tablebase :
+        i = 0
+        while i < nb:
+            board = random_board(pieces)
+            if not board in trainset:
+                i += 1
+                feature = features(board)
+                result = tablebase.probe_wdl(board)
+                Xte += [feature]
+                Yte += [result]
+        tablebase.close()
+    return Xte, Yte
+
+X, Y, boards = train_set(1000, ['K', 'k', 'Q', 'n'])
+Xt, Yt = test_set(200, ['K', 'k', 'Q', 'n'], boards)
+print("x : ", Xt)
+print("y : ", Yt)
+
+clf = LogisticRegression(random_state=0).fit(X, Y)
+print(clf.score(Xt, Yt))
