@@ -3,8 +3,12 @@ import chess.syzygy
 import chess.gaviota
 import sklearn 
 import random as rd
+import math
+import time 
 
 from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import SGDClassifier
+from itertools import permutations
 
 def create_board(pieces,places, color):
     board = chess.Board()
@@ -26,6 +30,24 @@ def random_board(pieces):
         return random_board(pieces)
     else:
         return board
+
+def generate_boards(pieces, n):
+    for i in range(n):
+        yield random_board(pieces)
+
+def generate_all(pieces):
+    for positions in permutations(chess.SQUARES, len(pieces)):
+        board1 = create_board(pieces, positions, 'w')
+        board2 = create_board(pieces, positions, 'w')
+        if board1.is_valid():
+            yield board1
+        if board2.is_valid():
+            yield board2 
+
+def generate_all_solutions(pieces):
+    with chess.syzygy.open_tablebase("data/syzygy/wdl") as tablebase :
+        for board in generate_all(pieces):
+            yield tablebase.probe_wdl(board)
 
 
 
@@ -139,10 +161,46 @@ def test_set(nb, pieces, trainset):
         tablebase.close()
     return Xte, Yte
 
-X, Y, boards = train_set(1000, ['K', 'k', 'Q', 'n'])
-Xt, Yt = test_set(200, ['K', 'k', 'Q', 'n'], boards)
-print("x : ", Xt)
-print("y : ", Yt)
+# X, Y, boards = train_set(1000, ['K', 'k', 'Q', 'r'])
+# Xt, Yt = test_set(200, ['K', 'k', 'Q', 'r'], boards)
 
-clf = LogisticRegression(random_state=0).fit(X, Y)
-print(clf.score(Xt, Yt))
+# clf = LogisticRegression(random_state=0).fit(X, Y)
+# board, result = Xt[0], Yt[0]
+# print(clf.score(Xt,Yt))
+# print(result)
+# print(clf.predict_proba([board]))
+
+
+def borne1(clf, pieces):
+    nb_right_ans = 0
+    n = 0
+    with chess.syzygy.open_tablebase("data/syzygy/wdl") as tablebase :
+        for board in generate_all(pieces):
+            n+=1
+            if tablebase.probe_wdl(board) == clf.predict([features(board)])[0]:
+                nb_right_ans += 1
+
+    acc = nb_right_ans / n
+    return (1-acc)* n * (math.log(n)+2)
+
+def borne2(clf, pieces):
+    somme = 0
+    with chess.syzygy.open_tablebase("data/syzygy/wdl") as tablebase :
+        for board in generate_all(pieces):
+            pos = tablebase.probe_wdl(board)
+            if pos == 0:                            #because probe_wdl return -2, 0 or 2
+                pos = 1
+            elif pos == -2:
+                pos = 0
+            somme -= clf.predict_log_proba([features(board)])[0][pos]
+    return somme
+
+X, Y, boards = train_set(1000, ['K', 'k', 'Q', 'r'])
+Xt, Yt = test_set(200, ['K', 'k', 'Q', 'r'], boards)
+clf = SGDClassifier(loss = 'log')
+clf.fit(X, Y)
+# print(borne1(clf, ['K', 'k', 'R', 'n']))
+start = time.time()
+print(borne2(clf, ['K', 'k', 'Q', 'r']))
+stop = time.time()
+print("temps = ", stop-start)
