@@ -171,36 +171,70 @@ def test_set(nb, pieces, trainset):
 # print(clf.predict_proba([board]))
 
 
-def borne1(clf, pieces):
+def bounds(clf, pieces):
     nb_right_ans = 0
     n = 0
-    with chess.syzygy.open_tablebase("data/syzygy/wdl") as tablebase :
-        for board in generate_all(pieces):
-            n+=1
-            if tablebase.probe_wdl(board) == clf.predict([features(board)])[0]:
-                nb_right_ans += 1
 
-    acc = nb_right_ans / n
-    return (1-acc)* n * (math.log(n)+2)
-
-def borne2(clf, pieces):
     somme = 0
     with chess.syzygy.open_tablebase("data/syzygy/wdl") as tablebase :
         for board in generate_all(pieces):
+            n+=1
             pos = tablebase.probe_wdl(board)
+            if pos == clf.predict([features(board)])[0]:
+                nb_right_ans += 1
+
             if pos == 0:                            #because probe_wdl return -2, 0 or 2
                 pos = 1
             elif pos == -2:
                 pos = 0
             somme -= clf.predict_log_proba([features(board)])[0][pos]
-    return somme
 
-X, Y, boards = train_set(1000, ['K', 'k', 'Q', 'r'])
-Xt, Yt = test_set(200, ['K', 'k', 'Q', 'r'], boards)
+    acc = nb_right_ans / n
+    return ((1-acc)* n * (math.log(n)+2), somme) 
+
+def n_naif(k):
+    n=64
+    for i in range(64-k+1, 64):
+        n *= i
+    return n
+
+
+def partial_bounds(clf, Xt, Yt, N):
+    nb_right_ans = 0
+    somme = 0
+    for x,y in zip(Xt,Yt):
+        if y == clf.predict([x])[0]:
+            nb_right_ans += 1
+         
+        if y == 0:                            #because probe_wdl return -2, 0 or 2
+            pos = 1
+        elif y == -2:
+            pos = 0
+        else :
+            pos = 2
+        somme -= clf.predict_log_proba([x])[0][pos]
+
+    n = len(Xt)
+    acc = nb_right_ans / n
+    return ((1-acc)* N * (math.log(N)+2), N * 1/n * somme)
+
+N = n_naif(4)
+board_tot = []
 clf = SGDClassifier(loss = 'log')
-clf.fit(X, Y)
-# print(borne1(clf, ['K', 'k', 'R', 'n']))
-start = time.time()
-print(borne2(clf, ['K', 'k', 'Q', 'r']))
-stop = time.time()
-print("temps = ", stop-start)
+for i in range(100):                                    #arbitrary, can be changed 
+    X, Y, _ = train_set(1000, ['K', 'k', 'Q', 'r'])
+    clf.partial_fit(X, Y, classes = [-2,0,2])
+    if i%10 == 0 and i>20 :                                        #i > 20 in order to avoid the log error    
+        Xt, Yt, _ = train_set(1000, ['K', 'k', 'Q', 'r'])          #actually a test set but no verification is needed so train_set is more appropriate
+        borne1, borne2 = partial_bounds(clf, Xt, Yt, N)
+        print(i, " :")
+        print("borne 1 : ", borne1)
+        print("borne 2 : ", borne2)
+
+Xt, Yt, _ = train_set(10000, ['K', 'k', 'Q', 'r'])         #actually a test set but no verification is needed so train_set is more appropriate
+
+borne1, borne2 = partial_bounds(clf, Xt, Yt, N)
+print()
+print("final")
+print("borne 1 : ", borne1)
+print("borne 2 : ", borne2)
