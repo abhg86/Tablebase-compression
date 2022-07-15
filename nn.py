@@ -11,12 +11,10 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import os
-import datetime
 import numpy.random as rd
 import numpy as np
 import random
 import math
-# import main
 import chess
 import chess.syzygy
 import csv
@@ -105,37 +103,6 @@ def nn_train_set(nb, nb_pieces, pieces=None):
             else :
                 result = 2
             Ytr += [torch.tensor([result])]
-    return Xtr, Ytr
-
-def nn_train_setv2(nb, nb_pieces, pieces=None):
-    Xtr, Ytr = [], []
-    with chess.syzygy.open_tablebases("wdl") as tablebase :
-        i=0
-        m2 = 0
-        p2 = 0
-        zer = 0
-        while i < nb:
-            if not pieces :
-                pieces = rd.choice(['Q','q','R','R','r','r','B','B','b','b','N','N','n','n','P','p','P','p','P','p','P','p','P','p','P','p','P','p','P','p'], nb_pieces -2, replace=False)
-                pieces = list(pieces)
-                pieces += ['k','K']
-            board = random_board(pieces)
-            result = tablebase.probe_wdl(board)
-            if (result == -2 and m2 <= 333) or (result == 2 and p2 <= 333) or (result == 0 and zer <= 333):
-                i+= 1
-
-                Xtr += [board_to_tensor(board)]
-
-                if result == -2:
-                    m2 += 1
-                    result = 0
-                elif result == 0:
-                    zer += 1
-                    result = 1
-                else :
-                    p2 += 1
-                    result = 2
-                Ytr += [torch.tensor([result])]
     return Xtr, Ytr
 
 class myDataset(Dataset):
@@ -240,13 +207,12 @@ def train(net, dataset, device, criterion, optimizer, scheduler, epoch_start=0, 
     net.train()
     
     train_set = myDataset(dataset)
-    # train_loader = DataLoader(train_set, batch_size=30, shuffle=True, num_workers=0, pin_memory=False)
     total_loss = 0.0
     for epoch in range(epoch_start, epoch_stop):
         boards = []
         results = []
         for data in train_set:
-            board, result = data[0].to(device), data[1].to(device)          #j'ignore si le to(device) est nécessaire ici, si non on peut se débarasser de MyDataset
+            board, result = data[0].to(device), data[1].to(device)
             boards += [board]
             results += [result]
         in_boards = torch.stack(boards, dim = 0)
@@ -275,15 +241,12 @@ def partial_bounds(net, Xt, Yt, N, device):
     cross_ent = nn.CrossEntropyLoss()
     train_set = myDataset([Xt, Yt])
     net.eval()
-    # x_test = torch.tensor([0])
     for i, (x, y)  in enumerate(train_set):
         y = y.item()
         board = x.to(device)
         x_values, x_labels = torch.topk(net(board),3)
         x_values.to(device)
         x_labels.to(device)
-        # print(torch.equal(x_test, x_labels))
-        # x_test = x_labels
 
         if y == x_labels[0,0].item():
             nb_right_ans += 1
@@ -315,18 +278,17 @@ def main_loop():
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, 10000)
     current_loss = 0
     loss = []
-    N = 15249024
-    with open('test.csv', 'a', newline='') as fichiercsv:
+    N = 1677216                   # number of boards possible with 4 pieces
+    with open('data.csv', 'a', newline='') as fichiercsv:
         w = csv.writer(fichiercsv)
         w.writerow(['New data'])
         w.writerow(['Step', 'loss'])
-        X, Y = nn_train_setv2(1000, 4)
-        data = [X,Y]
         for i in range(10000):                                    #arbitrary, can be changed 
-            
+            X, Y = nn_train_set(1000, 4)
+            data = [X,Y]    
             current_loss = train(net, data, device, criterion, optimizer, scheduler)
             if i%10 == 0 :
-                # Xt, Yt = nn_train_set(1000, 4)          #actually a test set but no verification is needed so train_set is more appropriate
+                Xt, Yt = nn_train_set(1000, 4)
                 borne1, borne2, moy, ec_type, acc, f1score, conf_mat = partial_bounds(net, X, Y, N, device)
                 print(i)
                 print(acc)
