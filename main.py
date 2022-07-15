@@ -115,7 +115,7 @@ def features(board):
 def train_set(nb, nb_pieces, pieces=None):
     Xtr, Ytr = [], []
     boards = []
-    with chess.syzygy.open_tablebase("data/syzygy/wdl") as tablebase :
+    with chess.syzygy.open_tablebase("wdl") as tablebase :
         for i in range(nb):
             if not pieces :
                 pieces = np.random.choice(['Q','q','R','R','r','r','B','B','b','b','N','N','n','n','P','p','P','p','P','p','P','p','P','p','P','p','P','p','P','p'], nb_pieces -2, replace=False)
@@ -174,7 +174,7 @@ def main():
                 w.writerows([[i, 'bound1', borne1], [i, 'bound2', borne2], [i, 'mean', moy], [i, 'standard deviation', ec_type], [i, 'accuracy', accuracy], [i, 'confusion matrix', conf_mat],])
 
         Xt, Yt, _ = train_set(10000, 4)         #actually a test set but no verification is needed so train_set is more appropriate
-
+    
         borne1, borne2, moy, ec_type = partial_bounds(clf, Xt, Yt, N)
 
         Ypred = clf.predict(Xt)                                     # faster than doing list(map(np.argmax, y)) with y being clf.predict_proba(Xt) precalculted for partial bounds
