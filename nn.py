@@ -88,7 +88,7 @@ def board_to_tensor(board):
 
 def nn_train_set(nb, nb_pieces, pieces=None):
     Xtr, Ytr = [], []
-    with chess.syzygy.open_tablebases("/wdl") as tablebase :
+    with chess.syzygy.open_tablebases("wdl") as tablebase :
         for i in range(nb):
             if not pieces :
                 pieces = rd.choice(['Q','q','R','R','r','r','B','B','b','b','N','N','n','n','P','p','P','p','P','p','P','p','P','p','P','p','P','p','P','p'], nb_pieces -2, replace=False)
@@ -109,7 +109,7 @@ def nn_train_set(nb, nb_pieces, pieces=None):
 
 def nn_train_setv2(nb, nb_pieces, pieces=None):
     Xtr, Ytr = [], []
-    with chess.syzygy.open_tablebases("/wdl") as tablebase :
+    with chess.syzygy.open_tablebases("wdl") as tablebase :
         i=0
         m2 = 0
         p2 = 0
@@ -316,7 +316,7 @@ def main_loop():
     current_loss = 0
     loss = []
     N = 15249024
-    with open('drive/MyDrive/test.csv', 'a', newline='') as fichiercsv:
+    with open('test.csv', 'a', newline='') as fichiercsv:
         w = csv.writer(fichiercsv)
         w.writerow(['New data'])
         w.writerow(['Step', 'loss'])
