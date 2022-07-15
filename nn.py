@@ -290,9 +290,6 @@ def main_loop():
             if i%10 == 0 :
                 Xt, Yt = nn_train_set(1000, 4)
                 borne1, borne2, moy, ec_type, acc, f1score, conf_mat = partial_bounds(net, X, Y, N, device)
-                print(i)
-                print(acc)
-                print(conf_mat)
                 w.writerows([[i, 'current loss', current_loss], [i, 'bound1', borne1], [i, 'bound2', borne2], [i, 'mean', moy], [i, 'standard deviation', ec_type], [i, 'accuracy', acc], [i, 'f1 score', f1score], [i, 'confusion matrix', conf_mat],])
 
 
