@@ -122,7 +122,7 @@ class myDataset(Dataset):
 class ConvBlock(nn.Module):
     def __init__(self):
         super(ConvBlock, self).__init__()
-        self.conv1 = nn.Conv2d(13, 64, kernel_size = 1, stride=1, padding=0)
+        self.conv1 = nn.Conv2d(13, 64, kernel_size = 3, stride=1, padding=1)
         self.bn1 = nn.BatchNorm2d(64)
 
     def forward(self, s):
