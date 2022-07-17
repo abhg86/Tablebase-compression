@@ -188,17 +188,21 @@ class OutBlock(nn.Module):
         return s
     
 class ChessNet(nn.Module):
-    def __init__(self):
+    def __init__(self, nb_blocks, type_blocks):
         super(ChessNet, self).__init__()
+        self.nb = nb_blocks
         self.conv = ConvBlock()
-        for block in range(40):
-            setattr(self, "res_%i" % block,ResBlock())
+        for block in range(nb_blocks):
+            if type_blocks == "res"
+                setattr(self, "block_%i" % block,ResBlock())
+            else :
+                setattr(self, "block_%i" % block,MobileBlock())
         self.outblock = OutBlock()
     
     def forward(self,s):
         s = self.conv(s)
-        for block in range(40):
-            s = getattr(self, "res_%i" % block)(s)
+        for block in range(self.nb):
+            s = getattr(self, "block_%i" % block)(s)
         s = self.outblock(s)
         return s
         
@@ -268,8 +272,8 @@ def partial_bounds(net, Xt, Yt, N, device):
     return ((1-acc)* N * (math.log(N)+2), N * moyenne, moyenne, log_proba.std(), acc, f1score, conf_mat)
 
 
-def main_loop():
-    net = ChessNet()
+def main_loop(nb_blocks, type_blocks, title):
+    net = ChessNet(nb_blocks, type_blocks)
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     print(device)
     net.to(device)
@@ -279,7 +283,7 @@ def main_loop():
     current_loss = 0
     loss = []
     N = 1677216                   # number of boards possible with 4 pieces
-    with open('data_40.csv', 'a', newline='') as fichiercsv:
+    with open(title, 'a', newline='') as fichiercsv:
         w = csv.writer(fichiercsv)
         w.writerow(['New data'])
         w.writerow(['Step', 'loss'])
@@ -293,4 +297,8 @@ def main_loop():
                 w.writerows([[i, 'current loss', current_loss], [i, 'bound1', borne1], [i, 'bound2', borne2], [i, 'mean', moy], [i, 'standard deviation', ec_type], [i, 'accuracy', acc], [i, 'f1 score', f1score], [i, 'confusion matrix', conf_mat],])
 
 
-main_loop()
+main_loop(40, "res", "data_res_40.csv")
+main_loop(40, "mobile", "data_mob_40.csv")
+
+main_loop(60, "res", "data_res_60.csv")
+main_loop(60, "mobile", "data_mob_60.csv")
