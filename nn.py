@@ -86,7 +86,7 @@ def board_to_tensor(board):
 
 def nn_train_set(nb, nb_pieces, pieces=None):
     Xtr, Ytr = [], []
-    with chess.syzygy.open_tablebases("wdl") as tablebase :
+    with chess.syzygy.open_tablebase("wdl") as tablebase :
         for i in range(nb):
             if not pieces :
                 pieces = rd.choice(['Q','q','R','R','r','r','B','B','b','b','N','N','n','n','P','p','P','p','P','p','P','p','P','p','P','p','P','p','P','p'], nb_pieces -2, replace=False)
@@ -193,7 +193,7 @@ class ChessNet(nn.Module):
         self.nb = nb_blocks
         self.conv = ConvBlock()
         for block in range(nb_blocks):
-            if type_blocks == "res"
+            if type_blocks == "res":
                 setattr(self, "block_%i" % block,ResBlock())
             else :
                 setattr(self, "block_%i" % block,MobileBlock())
